@@ -68,11 +68,13 @@ class BaseRequestHandler(webapp2.RequestHandler):
         self.response.write("SUCCESS")
 
     def IsUserInWhitelist(self, user):
+        return True
+        '''
         character = Character.GetCharacterByUser(user)
         if character.username == "GUEST" or character.isUnderReview:
             return False
         return True
-        '''
+
         if "@mail.chapman.edu".upper() not in user.email().upper():
             if not any(username in user.email().upper() for username in [x.upper() for x in self.USERNAME_WHITELIST]):
                 return False

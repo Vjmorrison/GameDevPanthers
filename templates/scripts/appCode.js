@@ -718,11 +718,14 @@ function SaveGradeInfo(enrolledGradesCallbackData)
 {
     var CourseIDs = [];
     window.AppData.UserInfo.courses = [];
-    for(var i = 0; i < enrolledGradesCallbackData.length; i++)
+    if(enrolledGradesCallbackData != null)
     {
-        enrolledGradesCallbackData[i]['enrolledDate'] = new Date(enrolledGradesCallbackData[i]['enrolledDate'] * 1000)
-        window.AppData.UserInfo.courses.push(enrolledGradesCallbackData[i]);
-        CourseIDs.push(enrolledGradesCallbackData[i]['courseKey']);
+        for(var i = 0; i < enrolledGradesCallbackData.length; i++)
+        {
+            enrolledGradesCallbackData[i]['enrolledDate'] = new Date(enrolledGradesCallbackData[i]['enrolledDate'] * 1000)
+            window.AppData.UserInfo.courses.push(enrolledGradesCallbackData[i]);
+            CourseIDs.push(enrolledGradesCallbackData[i]['courseKey']);
+        }
     }
     return CourseIDs;
 }
@@ -810,7 +813,10 @@ function SaveSubmittedProjects(ProjectsCallback)
         window.AppData.UserInfo['courses'][index].SubmittedProjects = {};
         lookupTable[window.AppData.UserInfo['courses'][index].courseKey] = window.AppData.UserInfo['courses'][index].SubmittedProjects;
     }
-
+    if(ProjectsCallback[0][0] == null)
+    {
+        return;
+    }
     for(var i = 0; i < ProjectsCallback[0][0].length; i++)
     {
         if("CourseID" in ProjectsCallback[0][0][i])

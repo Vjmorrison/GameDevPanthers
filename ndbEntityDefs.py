@@ -567,22 +567,22 @@ class LevelGradeChart(BaseModel):
         xpAmount = int(xpAmount)
         xpForD = self.MinXpForLevel(self.MinLevel_forD)
         if xpAmount < xpForD:
-            return self.GetPlusMinusChar(xpAmount, 0, xpForD) + 'F'
+            return 'F' + self.GetPlusMinusChar(xpAmount, 0, xpForD)
 
         xpForC = self.MinXpForLevel(self.MinLevel_forC)
         if xpAmount < xpForC:
-            return self.GetPlusMinusChar(xpAmount, xpForD, xpForC) + 'D'
+            return 'D' + self.GetPlusMinusChar(xpAmount, xpForD, xpForC)
 
         xpForB = self.MinXpForLevel(self.MinLevel_forB)
         if xpAmount < xpForB:
-            return self.GetPlusMinusChar(xpAmount, xpForC, xpForB) + 'C'
+            return 'C' + self.GetPlusMinusChar(xpAmount, xpForC, xpForB)
 
         xpForA = self.MinXpForLevel(self.MinLevel_forA)
         if xpAmount < xpForA:
-            return self.GetPlusMinusChar(xpAmount, xpForB, xpForA) + 'B'
+            return 'B' + self.GetPlusMinusChar(xpAmount, xpForB, xpForA)
 
         xpForMAX = self.MinXpForLevel(self.MaxLevel)
-        return self.GetPlusMinusChar(xpAmount, xpForA, xpForMAX) + 'A'
+        return 'A' + self.GetPlusMinusChar(xpAmount, xpForA, xpForMAX)
 
     def GetPlusMinusChar(self, value, levelMin, levelMax):
         if value < levelMin or value > levelMax:
@@ -900,13 +900,18 @@ class Project(BaseModel):
         return allProjects
 
     @classmethod
-    def GetProjectsByCourse(cls, courseKey):
+    def GetProjectsByCourse(cls, callingCharacter, courseKey):
         courseKey = ndb.Key(urlsafe=courseKey)
         projects = cls.query(Project.courseKey == courseKey).fetch()
         projects = ForceObjectToList(projects)
-        for proj in projects:
+        if callingCharacter.isAdmin:
+            cleanedList = projects
+        else:
+            validProjectFilter = lambda proj: proj.owningCharacter is None or proj.owningCharacter.get().isAdmin or proj.owningCharacter == callingCharacter.key
+            cleanedList = filter(validProjectFilter, projects)
+        for proj in cleanedList:
             setattr(proj, 'urlsafe', GetUrlSafeKey(proj))
-        return projects
+        return cleanedList
 
     @classmethod
     def GetProjectsByCharacter(cls, characterUrlSafe):
@@ -1055,7 +1060,7 @@ class CharacterProject(BaseModel):
     def GetCompletedCharacterProjects(cls, characterID):
         char = Character.Get(characterID)
         if char and isinstance(char, Character):
-            allRecords = cls.query(cls.CharacterID == char.key and cls.Status == "Complete").fetch()
+            allRecords = cls.query(cls.CharacterID == char.key, cls.Status == "Complete").fetch()
             allRecords = ForceObjectToList(allRecords)
             for proj in allRecords:
                 setattr(proj, 'urlsafe', GetUrlSafeKey(proj))
