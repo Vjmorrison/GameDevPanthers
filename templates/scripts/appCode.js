@@ -833,6 +833,10 @@ function SaveAllCourseProjects(courseProjectsCallback)
     for(var index = 0; index < window.AppData.UserInfo['courses'].length; index++)
     {
         window.AppData.UserInfo['courses'][index].courseInfo.projects = [];
+        if(courseProjectsCallback.length == 3 && courseProjectsCallback[1] == 'success')
+        {
+            courseProjectsCallback = [courseProjectsCallback];
+        }
         if(courseProjectsCallback.length > index)
         {
             var projectCallback = courseProjectsCallback[index];
