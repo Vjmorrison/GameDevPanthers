@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+<head>
+    <title></title>
+    <link href="../bootstrap-3_2_0-dist/css/bootstrap.min.css" rel="stylesheet" type="text/css">
+    <link href="../bootstrap-3_2_0-dist/css/bootstrap-theme.css" rel="stylesheet" type="text/css">
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="scripts/appCode.js"></script>
+    <script src="../bootstrap-3_2_0-dist/js/bootstrap.min.js"></script>
+    <script src="scripts/jquery.transit.min.js"></script>
+    <style>
+        .loading
+        {
+            width:100%;
+            min-height: 100%;
+            background-color: darkgrey;
+            opacity: 75;
+            float: left;
+        }
+        .loading-hidden
+        {
+            display: none;
+        }
+        .loadingContents
+        {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+        }
+
+    </style>
+</head>
+<body role="document" style="padding-top: 70px; height: 100%">
+<div id="loading" class="loading navbar-fixed-top" role="main">
+    <img class="loadingContents" src="../images/loading-anim.gif" width="100" >
+</div>
+<div id="navigation" class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+    <div class="container">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="#">GameDevPanthers</a>
+        </div>
+        <div class="navbar-collapse collapse">
+            <ul class="nav navbar-nav">
+                <li class="active"><a href="#">Home</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#contact">Contact</a></li>
+                <li class="dropdown" id="studentDropdown" >
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" ><span id="studentName">Student</span><span class="caret"></span></a>
+                    <ul class="dropdown-menu" role="menu" id="studentDropdownList">
+                    </ul>
+                </li>
+            </ul>
+        </div><!--/.nav-collapse -->
+    </div>
+</div>
+<div id="APP" class="container-fluid">
+    <div id="MainWindow" class="row">
+        <div id="CharacterBar" class="col-xs-12 col-md-4 col-lg-3 well">
+            <div id="editBTN" class="pull-right">
+                <button class="btn btn-sm btn-info">Edit</button>
+            </div>
+            <img id="avatar" src="../images/missing.png" class="img-responsive img-thumbnail">
+            <h2 id="characterName">loading...</h2>
+            <div id="ClassSection" class="thumbnail" style="overflow-y: scroll; height: 325px; background-color: darkgrey">
+                <div id="sampleClass" class="thumbnail hidden">
+                    <div  class="caption">
+                        <h3 name="ClassName">ClassName</h3>
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <p>Level: <span name="Level"></span></p>
+                            </div>
+                            <div class="col-sm-6">
+                                <p>Grade: <span name="Grade"></span></p>
+                            </div>
+                        </div>
+
+                        <p>XP: <span name="TotalXP"></span></p>
+                        XP to Next Level
+                        <div class="progress">
+                            <div name="XpToNextLevelProgressBar" class="progress-bar" role="progressbar" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100" style="width: 25%;">
+                                <span name="XpToNextLevel">c/m</span>
+                            </div>
+                        </div>
+                        Xp to Next Grade:
+                        <div class="progress">
+                            <div name="CurrentGradeBar" class="progress-bar progress-bar-success" role="progressbar" style="width: 20%;" data-toggle="tooltip" data-placement="bottom" title="Current XP: 0">
+                                <span><span name="XpToNextGrade">0</span>xp</span>
+                            </div>
+                            <div name="F_GradeBar" class="progress-bar progress-bar-danger" style="width: 20%" data-toggle="tooltip" data-placement="bottom" title="XP to D: 20">
+                                <span class="sr-only">35% Complete (success)</span>
+                            </div>
+                            <div name="D_GradeBar" class="progress-bar progress-bar-danger progress-bar-striped" style="width: 20%"  data-toggle="tooltip" data-placement="bottom" title="XP to C: 20">
+                                <span class="sr-only">35% Complete (success)</span>
+                            </div>
+                            <div name="C_GradeBar" class="progress-bar progress-bar-warning" style="width: 20%"  data-toggle="tooltip" data-placement="bottom" title="XP to B: 20">
+                                <span class="sr-only">20% Complete (warning)</span>
+                            </div>
+                            <div name="B_GradeBar" class="progress-bar progress-bar-warning progress-bar-striped" style="width: 10%" data-toggle="tooltip" data-placement="bottom" title="XP to A: 20">
+                                <span class="sr-only">10% Complete (danger)</span>
+                            </div>
+                            <div name="A_GradeBar" class="progress-bar progress-bar-info" style="width: 10%">
+                                <span class="sr-only">10% Complete (danger)</span>
+                            </div>
+                        </div>
+                        <div name="currentProjects">
+                            <h4>Current Projects:</h4>
+                            <div name="projectList" class="list-group">
+                                <a name="projectLink" href="#" class="list-group-item">Sample Project Name</a>
+                                <a name="projectLink" href="#" class="list-group-item">Sample Project Name</a>
+                                <a name="projectLink" href="#" class="list-group-item">Sample Project Name</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="InspectorWindow" class="col-xs-12 col-md-8 col-lg-9">
+
+        </div>
+        <!-- Modal -->
+        <div class="modal fade" id="ModalEditor" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                        <h4 class="modal-title" id="EditorHeader">Modal title</h4>
+                    </div>
+                    <div class="modal-body">
+                        ...
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary">Save changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- END Modal -->
+    </div>
+</div>
+</body>
+</html>

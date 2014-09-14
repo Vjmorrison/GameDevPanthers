@@ -1,0 +1,40 @@
+application: gamedevpanthers
+version: 2
+runtime: python27
+api_version: 1
+threadsafe: yes
+
+handlers:
+- url: /stylesheets
+  static_dir: templates/stylesheets
+
+- url: /bootstrap-3_2_0-dist
+  static_dir: bootstrap-3_2_0-dist
+
+- url: /scripts
+  static_dir: templates/scripts
+
+- url: /ProjectData
+  static_dir: ProjectData
+
+- url: /images
+  static_dir: images
+
+- url: /favicon.ico
+  static_files: favicon.ico
+  upload: favicon\.ico
+
+- url: /apple-touch-icon.png
+  static_files: apple-touch-icon.png
+  upload: apple-touch-icon\.png
+
+- url: .*
+  script: main.app
+
+libraries:
+- name: webapp2
+  version: "2.5.2"
+- name: jinja2
+  version: latest
+- name: MySQLdb
+  version: latest
