@@ -836,24 +836,34 @@ function SaveSubmittedProjects(ProjectsCallback)
 
 function SaveAllCourseProjects(courseProjectsCallback)
 {
-    for(var index = 0; index < window.AppData.UserInfo['courses'].length; index++)
+    if(courseProjectsCallback.length == 3 && courseProjectsCallback[1] == 'success')
     {
-        window.AppData.UserInfo['courses'][index].courseInfo.projects = [];
-        if(courseProjectsCallback.length == 3 && courseProjectsCallback[1] == 'success')
-        {
-            courseProjectsCallback = [courseProjectsCallback];
-        }
-        if(courseProjectsCallback.length > index)
-        {
-            var projectCallback = courseProjectsCallback[index];
-            if(projectCallback[0].length > 0)
-            {
-                for(var projIndex = 0; projIndex < projectCallback[0].length; projIndex++)
-                {
-                    window.AppData.UserInfo['courses'][index].courseInfo.projects.push(projectCallback[0][projIndex]);
-                }
-            }
-        }
+        courseProjectsCallback = [courseProjectsCallback];
+    }
+
+    for(var courseIndex = 0; courseIndex < window.AppData.UserInfo['courses'].length; courseIndex++)
+    {
+        window.AppData.UserInfo['courses'][courseIndex].courseInfo.projects = [];
+    }
+
+    for(var index = 0; index < courseProjectsCallback.length; index++)
+    {
+        SaveCourseProjectCallback(courseProjectsCallback[index][0]);
+    }
+}
+
+function SaveCourseProjectCallback(projectCallback)
+{
+    if(projectCallback.length == 0)
+    {
+        return;
+    }
+    var courseIndex = GetCourseIndexByKey(projectCallback[0].courseKey);
+    window.AppData.UserInfo['courses'][courseIndex].courseInfo.projects = [];
+
+    for(var projIndex = 0; projIndex < projectCallback.length; projIndex++)
+    {
+        window.AppData.UserInfo['courses'][courseIndex].courseInfo.projects.push(projectCallback[projIndex]);
     }
 }
 
@@ -1054,9 +1064,28 @@ function DisplayCoursePage(CourseKey)
     var newProjectObject = {};
     jQuery.extend(newProjectObject,window.AppData.defaults.project);
     NewProjectButton.click(function(){
-        DisplayGenericEditor(newProjectObject, "New Project", APICalls.AddNewProject, {
+        var defaultPrereq = [];
+        if(window.AppData.SelectedProject && window.AppData.SelectedProject.data.courseKey == window.AppData.UserInfo.courses[courseIndex].courseInfo.urlsafe)
+        {
+            defaultPrereq = [window.AppData.SelectedProject.urlsafe];
+        }
+        DisplayGenericEditor(newProjectObject, "New Project", function(newProject){
+            APICalls.AddNewProject(newProject).then(function(){
+                APICalls.GetCourseProjects(newProject.courseKey).then(function(callback){
+                    SaveCourseProjectCallback(callback);
+                    var courseIndex = GetCourseIndexByKey(newProject.courseKey);
+                    window.AppData.UserInfo.courses[courseIndex].courseInfo.SortedProjects = SortProjects(window.AppData.UserInfo.courses[courseIndex].courseInfo.projects, window.AppData.UserInfo.courses[courseIndex].SubmittedProjects);
+                    $('#course_'+newProject.courseKey).trigger('click');
+                    if(window.AppData.SelectedProject)
+                    {
+                        $("#"+window.AppData.SelectedProject.urlsafe).children('button').trigger('click');
+                    }
+                })
+            });
+        }, {
             courseKey:window.AppData.UserInfo.courses[courseIndex].courseInfo.urlsafe,
             owningCharacter:window.AppData.UserInfo.character.urlsafe,
+            prerequisiteProjectIDs:defaultPrereq,
             ChallengeLevel:"normal"
         }, {
             fields: ['courseKey', 'owningCharacter']
@@ -1239,19 +1268,19 @@ function DisplaySubmission(submission)
 
             var projectButtonContainer = $('<div/>', {style:'max-width:400px'}).addClass('btn-group btn-group-justified');
             var ApproveBTN = $('<div/>').addClass('btn-group').append(
-                        $('<button/>').addClass('btn btn-success').text("Approve ").attr('submittedProjectID', window.AppData.SelectedAdminProject.urlsafe).append('<span class="glyphicon glyphicon-thumbs-up"></span>').click(function(){
-                            APICalls.ApproveProject($(this).attr('submittedProjectID'));
-                            projectButtonContainer.find('.btn-danger').parent().remove();
-                            $(this).prop('disabled', true);
-                        })
-                    );
+                $('<button/>').addClass('btn btn-success').text("Approve ").attr('submittedProjectID', window.AppData.SelectedAdminProject.urlsafe).append('<span class="glyphicon glyphicon-thumbs-up"></span>').click(function(){
+                    APICalls.ApproveProject($(this).attr('submittedProjectID'));
+                    projectButtonContainer.find('.btn-danger').parent().remove();
+                    $(this).prop('disabled', true);
+                })
+            );
             var RejectBTN = $('<div/>').addClass('btn-group').append(
-                        $('<button/>').addClass('btn btn-danger').text("Reject ").attr('submittedProjectID', window.AppData.SelectedAdminProject.urlsafe).append('<span class="glyphicon glyphicon-thumbs-down"></span>').click(function(){
-                            APICalls.RejectProject($(this).attr('submittedProjectID'));
-                            projectButtonContainer.find('.btn-success').parent().remove();
-                            $(this).prop('disabled', true);
-                        })
-                    );
+                $('<button/>').addClass('btn btn-danger').text("Reject ").attr('submittedProjectID', window.AppData.SelectedAdminProject.urlsafe).append('<span class="glyphicon glyphicon-thumbs-down"></span>').click(function(){
+                    APICalls.RejectProject($(this).attr('submittedProjectID'));
+                    projectButtonContainer.find('.btn-success').parent().remove();
+                    $(this).prop('disabled', true);
+                })
+            );
             projectButtonContainer.append(ApproveBTN);
             projectButtonContainer.append(RejectBTN);
             caption.append(projectButtonContainer);
@@ -1582,11 +1611,15 @@ function AddSubmittedProject(newSubmission)
 
 function SortProjects(allProjects, submittedProjects)
 {
+
+    var treeLookup = {};
     var projectTree = {urlsafe:'root', data:{}, children:[]};
-    var waitingForParents = {urlsafe:'root', data:{}, children:[]};
+    var waitingForParents = [];
     for(var i = 0; i < allProjects.length; i++)
     {
         var projObject = {urlsafe:allProjects[i].urlsafe, data:allProjects[i], submission: null, children:[]};
+
+        treeLookup[allProjects[i].urlsafe] = projObject;
 
         if($.inArray(allProjects[i].urlsafe, submittedProjects.keys))
         {
@@ -1595,36 +1628,29 @@ function SortProjects(allProjects, submittedProjects)
 
         if(allProjects[i].prerequisiteProjectIDs.length == 1)
         {
-            var parentProject = FindProjectInTree(projectTree, allProjects[i].prerequisiteProjectIDs[0]);
-            if(parentProject != null)
+            if(allProjects[i].prerequisiteProjectIDs[0] in treeLookup)
             {
-                parentProject.children.push(projObject);
+                treeLookup[allProjects[i].prerequisiteProjectIDs[0]].children.push(projObject)
             }
             else
             {
-                parentProject = FindProjectInTree(waitingForParents, allProjects[i].prerequisiteProjectIDs[0]);
-                if(parentProject != null)
-                {
-                    parentProject.children.push(projObject);
-                }
-                else
-                {
-                    waitingForParents.children.push(projObject);
-                }
+                waitingForParents.push(projObject);
             }
         }
         else
         {
-            var WaitingChildren = PopFoundNodes(null, waitingForParents, [], projObject.urlsafe);
-            if(WaitingChildren != null)
+            projectTree.children.push(projObject);
+        }
+    }
+    while(waitingForParents != null && waitingForParents.length > 0)
+    {
+        for(var waitingIndex = 0; waitingIndex < waitingForParents.length; waitingIndex++)
+        {
+            if(waitingForParents[waitingIndex].data.prerequisiteProjectIDs[0] in treeLookup)
             {
-                for(var childindex = 0; childindex < WaitingChildren.length; childindex++)
-                {
-                    projObject.children.push(WaitingChildren[childindex]);
-                }
+                treeLookup[waitingForParents[waitingIndex].data.prerequisiteProjectIDs[0]].children.push(waitingForParents[waitingIndex]);
+                waitingForParents.splice(waitingIndex,1);
             }
-
-            projectTree.children.push(projObject)
         }
     }
     return projectTree;
