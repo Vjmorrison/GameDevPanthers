@@ -684,40 +684,42 @@ class Course(BaseModel):
         return course
 
     @classmethod
-    def AddNewCourse(cls, name, number, description, syllabusLink, k_IconID, k_chartID):
-        course = cls.GetCourseByNumber(number)
-        if not course:
-            course = Course()
-        else:
-            return GetAPIError(APIErrorTypes.EXISTS, course.to_dict())
+    def AddNewCourse(cls, callingCharacter, name, number, description, syllabusLink, k_IconID, k_chartID):
+        if callingCharacter.isAdmin:
+            course = cls.GetCourseByNumber(number)
+            if not course:
+                course = Course()
+            else:
+                return GetAPIError(APIErrorTypes.EXISTS, course.to_dict())
 
-        course.Name = name
-        course.courseNumber = number
-        course.Description = description
-        course.syllabusLink = syllabusLink
-        try:
-            course.IconID = GetKey(Icon.Get(k_IconID))
-        except:
-            course.IconID = None
-        try:
-            course.chartID = LevelGradeChart.Get(k_chartID).key
-        except:
-            course.chartID = LevelGradeChart.GetDefaultChart().key
+            course.Name = name
+            course.courseNumber = number
+            course.Description = description
+            course.syllabusLink = syllabusLink
+            try:
+                course.IconID = GetKey(Icon.Get(k_IconID))
+            except:
+                course.IconID = None
+            try:
+                course.chartID = LevelGradeChart.Get(k_chartID).key
+            except:
+                course.chartID = LevelGradeChart.GetDefaultChart().key
 
-        course.put()
-        return course
+            course.put()
+            return course
 
     @classmethod
     def UpdateCourse(cls, callingCharacter, courseID, updatedArgs):
-        course = cls.Get(courseID)
-        if not course:
-            return GetAPIError(APIErrorTypes.NOTEXIST, {"courseID": courseID, "Calling CharacterID": callingCharacter.userID})
-        if not hasattr(updatedArgs, '__iter__'):
-            updatedArgs = [updatedArgs]
+        if callingCharacter.isAdmin:
+            course = cls.Get(courseID)
+            if not course:
+                return GetAPIError(APIErrorTypes.NOTEXIST, {"courseID": courseID, "Calling CharacterID": callingCharacter.userID})
+            if not hasattr(updatedArgs, '__iter__'):
+                updatedArgs = [updatedArgs]
 
-        if UpdateRecord(course, updatedArgs, callingCharacter, None):
-            course.put()
-        return course
+            if UpdateRecord(course, updatedArgs, callingCharacter, None):
+                course.put()
+            return course
 
 
 GetCourseParamMethods = {
@@ -886,10 +888,11 @@ class Project(BaseModel):
         return GetDefaultInstance(cls)
 
     @classmethod
-    def Delete(cls, projectID):
+    def Delete(cls, callingCharacter, projectID):
         project = cls.Get(projectID)
-        if project:
-            project.key.delete()
+        if project and isinstance(project, Project):
+            if callingCharacter.isAdmin or callingCharacter.key == project.owningCharacter:
+                project.key.delete()
 
     @classmethod
     def GetProjects(cls):
@@ -937,6 +940,14 @@ class Project(BaseModel):
                     project.courseKey = Course.GetCourseByNumber('CPSC-244').key
                     project.ChallengeLevel = 'normal'
                     project.owningCharacter = callingCharacter.key
+                if project.prerequisiteProjectIDs is not None and len(project.prerequisiteProjectIDs) > 0:
+                    for index, prereq in enumerate(project.prerequisiteProjectIDs):
+                        try:
+                            value = prereq.get()
+                            if value is None:
+                                del project.prerequisiteProjectIDs[index]
+                        except:
+                            del project.prerequisiteProjectIDs[index]
                 project.put()
 
     @classmethod

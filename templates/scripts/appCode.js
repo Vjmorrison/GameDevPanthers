@@ -430,6 +430,13 @@ var APICalls = {
         })
     },
 
+    DeleteProject: function(deleteKey)
+    {
+         return $.getJSON('api/SetProject/delete', {
+            projectID:deleteKey
+        })
+    },
+
     GetGuestCharacter: function ()
     {
         return $.getJSON('api/GetCharacter/guest')
@@ -696,8 +703,9 @@ function DisplayCharacterInfo()
         }
         else
         {
-            $("#editBTN").click(function(){
+            $("#editBTN").off("click").click(function(){
                 DisplayGenericEditor(window.AppData.UserInfo['character'], "Edit Character", function(newCharcter){
+                    newCharcter.isAdmin = typeof newCharcter.isAdmin == "boolean" ? newCharcter.isAdmin : newCharcter.isAdmin.toUpperCase() == "TRUE";
                     APICalls.UpdateCharacter(newCharcter);
                     UpdateDisplay();
                 }, {}, {
@@ -881,15 +889,20 @@ function UpdateDisplay()
 
     if(window.AppData.UserInfo.character.isAdmin)
     {
+        $("#NewCourseButton").remove();
         var NewCourseButton = $('<button/>', {
-            class:'btn btn-info'
+            class:'btn btn-info',
+            id:"NewCourseButton"
         });
         NewCourseButton.text('add ').append('<span class="glyphicon glyphicon-plus"></span>');
 
         var newCourse = {};
         jQuery.extend(newCourse,window.AppData.defaults.course);
         NewCourseButton.click(function(){
-            DisplayGenericEditor(newCourse, "New Course", APICalls.AddNewCourse)});
+            DisplayGenericEditor(newCourse, "New Course", new function(course){
+                APICalls.AddNewCourse(course);
+            });
+        });
 
         NewCourseButton.insertBefore($('#ClassSection'));
     }
@@ -1051,11 +1064,22 @@ function DisplayCoursePage(CourseKey)
 
     HeaderDiv.append("<h1>"+window.AppData.UserInfo.courses[courseIndex].courseInfo.Name+"</br><small>"+window.AppData.UserInfo.courses[courseIndex].courseInfo.Description+"</small></h1>");
 
+    var projectsDiv = $('<div/>').addClass('row');
+
     var allProjects = $('<div/>', {
         id: 'AllCourseProjects',
-        class: 'well well-lg',
-        style: 'min-height: 400px; max-height: 600px; overflow-y: scroll; overflow-x: scroll; padding-top:10px'
+        class: 'well well-lg tree col-lg-8 col-md-8 col-xs-12',
+        style: 'min-height: 400px; max-height: 600px; overflow-y: scroll; overflow-x: scroll; padding-top:10px;'
     });
+    var SelectedProject = $('<div/>', {
+        id: 'SelectedProject',
+        class: 'well well-sm col-lg-4 col-md-4 col-xs-12',
+        style: 'padding-top:10px; min-height: 400px; max-height: 600px; overflow-y: scroll'
+    });
+
+    projectsDiv.append(allProjects);
+    projectsDiv.append(SelectedProject);
+
     var NewProjectButton = $('<button/>', {
         class:'btn btn-warning btn-sm'
     });
@@ -1110,7 +1134,7 @@ function DisplayCoursePage(CourseKey)
 
     CourseDiv.append(HeaderDiv);
     CourseDiv.append(NewProjectButton);
-    CourseDiv.append(allProjects);
+    CourseDiv.append(projectsDiv);
     if(window.AppData.UserInfo.character.isAdmin)
     {
         var AdminPanel = $('<div/>', {
@@ -1184,6 +1208,28 @@ function FindProjectInTree(treenode, urlsafe)
         if(foundProj != null)
         {
             return foundProj;
+        }
+    }
+    return null;
+}
+
+function FindParentProjectInTree(treenode, urlsafe)
+{
+    if(treenode.urlsafe == urlsafe)
+    {
+        return treenode;
+    }
+
+    for(var i = 0; i < treenode.children.length; i++)
+    {
+        var foundProj = FindParentProjectInTree(treenode.children[i], urlsafe);
+        if(foundProj != null && foundProj.hasOwnProperty('data'))
+        {
+            return {node:treenode, childIndex:i};
+        }
+        else if(foundProj != null)
+        {
+            return foundProj
         }
     }
     return null;
@@ -1300,29 +1346,56 @@ function GetSortedProjectList(projectTreeNode)
     {
         return "<h2>There are no projects available for this course.</h2><h3>Please wait for the instructor to add them OR add your own!</h3>";
     }
-    var projectItem = $('<li/>', {style:'text-align:center; vertical-align: top;margin-left: 10px;margin-right: 10px;'}).attr('urlsafe', projectTreeNode.urlsafe).attr('id', projectTreeNode.urlsafe);
+    var projectItem = $('<li/>', {style:'text-align:center; vertical-align: top; display:inline-block'}).attr('urlsafe', projectTreeNode.urlsafe).attr('id', projectTreeNode.urlsafe);
     if(projectTreeNode.urlsafe != 'root')
     {
-        projectItem.append($('<button/>').text(projectTreeNode.data.projectName).addClass('btn btn-primary btn-lg').click(projectTreeNode, function(selectedNode) {
+        var mostRecentSubmission = GetMostRecentSubmission(projectTreeNode.submission);
+        var buttonColorClass = "btn-primary";
+        if(mostRecentSubmission)
+        {
+            switch(mostRecentSubmission.Status)
+            {
+                 case "UnderReview":
+                    buttonColorClass = "btn-warning";
+                    break;
+                case 'Complete':
+                    buttonColorClass = "btn-success";
+                    break;
+                case 'InProgress':
+                    buttonColorClass = "btn-info";
+                    break;
+                case 'Rejected':
+                    buttonColorClass = "btn-danger";
+                    break;
+                default :
+                    buttonColorClass = "btn-primary";
+                    break;
+            }
+        }
+        projectItem.append($('<button/>').text(projectTreeNode.data.projectName).addClass('btn btn-lg '+buttonColorClass).click(projectTreeNode, function(selectedNode) {
                 if(window.AppData.SelectedProject)
                 {
-                    $("#"+window.AppData.SelectedProject.urlsafe).children('div').remove();
+                    $("#"+window.AppData.SelectedProject.urlsafe).children('button').removeClass("active");
                 }
                 window.AppData.SelectedProject = selectedNode.data;
-                GetProjectDisplay(window.AppData.SelectedProject).insertBefore($("#"+window.AppData.SelectedProject.urlsafe).children('ul'));
+                $("#"+window.AppData.SelectedProject.urlsafe).children('button').addClass("active");
+                $('#SelectedProject').empty().append(GetProjectDisplay(window.AppData.SelectedProject));
             }
         ))
     }
 
     var childList = $('<ul/>').addClass('list-inline');
 
-    for(var i=0; i < projectTreeNode.children.length; i++)
+    if(projectTreeNode.children.length > 0)
     {
-        var childObject = GetSortedProjectList(projectTreeNode.children[i]);
-        childList.append(childObject);
-    }
+        for(var i=0; i < projectTreeNode.children.length; i++)
+        {
+            var childObject = GetSortedProjectList(projectTreeNode.children[i]);
+            childList.append(childObject);
+        }
 
-    projectItem.append(childList);
+        projectItem.append(childList);
+    }
 
     return projectItem;
 }
@@ -1385,9 +1458,31 @@ function GetProjectByKey(courseKey, projectKey)
     return null;
 }
 
+function GetMostRecentSubmission(submissionList)
+{
+    if(submissionList == null)
+    {
+        return null;
+    }
+    var mostRecentSubmission = null;
+    for(var subIndex = 0; subIndex < submissionList.length; subIndex++)
+    {
+        if(mostRecentSubmission == null)
+        {
+            mostRecentSubmission = submissionList[subIndex];
+            continue;
+        }
+        if(submissionList[subIndex].LastModifiedDate == null || submissionList[subIndex].LastModifiedDate > mostRecentSubmission.LastModifiedDate)
+        {
+            mostRecentSubmission = submissionList[subIndex];
+        }
+    }
+    return mostRecentSubmission
+}
+
 function GetProjectDisplay(projectNode)
 {
-    var thumbnail = $('<div/>').addClass('thumbnail');
+    var thumbnail = $('<div/>', {style:'max-width: 450px;margin-left: auto;margin-right: auto;'}).addClass('thumbnail');
     var icon = $('<img/>', {src:"/images/missing.png", style:"width:50%"}).addClass("img-responsive img-circle");
     var caption = $('<div/>', {style:'max-width:400px; white-space:normal'}).addClass('caption text-left');
     caption.append($('<h3/>', {style:'word-wrap: break-word'}).text(projectNode.data.projectName));
@@ -1422,7 +1517,7 @@ function GetProjectDisplay(projectNode)
 
     if(projectNode.data.attachments.length > 0)
     {
-        var AttachmentList = $('<ul/>', {style:'max-width:400px; overflow-x:auto;'});
+        var AttachmentList = $('<ul/>', {style:'max-width:400px; margin-left:10px'});
         for(var i =0; i < projectNode.data.attachments.length; i++)
         {
             AttachmentList.append($('<li/>').append($('<a/>', {href:projectNode.data.attachments[i]}).text(projectNode.data.attachments[i])));
@@ -1433,7 +1528,7 @@ function GetProjectDisplay(projectNode)
 
     if(projectNode.data.requirements.length > 0)
     {
-        var requirementsList = $('<ul/>', {style:'max-width:400px; overflow-x:auto;'});
+        var requirementsList = $('<ol/>', {style:'max-width:400px;  margin-left:10px'});
         for(var j =0; j < projectNode.data.requirements.length; j++)
         {
             requirementsList.append($('<li/>').text(projectNode.data.requirements[j]));
@@ -1446,19 +1541,7 @@ function GetProjectDisplay(projectNode)
 
     if(projectNode.submission != null)
     {
-        var mostRecentSubmission = null;
-        for(var subIndex = 0; subIndex < projectNode.submission.length; subIndex++)
-        {
-            if(mostRecentSubmission == null)
-            {
-                mostRecentSubmission = projectNode.submission[subIndex];
-                continue;
-            }
-            if(projectNode.submission[subIndex].LastModifiedDate == null || projectNode.submission[subIndex].LastModifiedDate > mostRecentSubmission.LastModifiedDate)
-            {
-                mostRecentSubmission = projectNode.submission[subIndex];
-            }
-        }
+        var mostRecentSubmission = GetMostRecentSubmission(projectNode.submission);
         switch(mostRecentSubmission.Status)
         {
             case "UnderReview":
@@ -1568,12 +1651,33 @@ function GetProjectDisplay(projectNode)
     caption.append(projectButtonContainer);
 
     thumbnail.append(icon);
+
+    var DeleteBTN = $('<button/>').text("Delete").addClass('btn btn-xs btn-danger pull-right').append('<span class="glyphicon glyphicon-remove"></span>').click(projectNode.data, function(click){
+            APICalls.DeleteProject(click.data.urlsafe);
+            var index = GetCourseIndexByKey(click.data.courseKey);
+            var parentAndIndex = FindParentProjectInTree(window.AppData.UserInfo.courses[index].courseInfo.SortedProjects, click.data.urlsafe);
+            delete parentAndIndex.node.children[parentAndIndex.childIndex];
+            if(window.AppData.SelectedProject)
+            {
+                $("#"+window.AppData.SelectedProject.urlsafe).children('button').removeClass("active");
+            }
+            window.AppData.SelectedProject = null;
+        });
+
+    if(projectNode.data.owningCharacter == window.AppData.UserInfo.character.urlsafe && projectNode.children.length == 0)
+    {
+        thumbnail.append(DeleteBTN);
+    }
+
     if(window.AppData.UserInfo.character.isAdmin)
     {
         thumbnail.append($('<button/>').text("Edit").addClass('btn btn-xs btn-warning pull-right').append('<span class="glyphicon glyphicon-pencil"></span>').click(projectNode.data, function(click){
-            DisplayGenericEditor(click.data, "Edit Project", APICalls.UpdateProject);
-            DisplayCoursePage(click.data.courseKey);
-            $("#"+click.data.urlsafe).children('button').trigger('click');
+            DisplayGenericEditor(click.data, "Edit Project", new function(updatedProject){
+                APICalls.UpdateProject(updatedProject);
+                DisplayCoursePage(updatedProject.courseKey);
+                $("#"+updatedProject.urlsafe).children('button').trigger('click');
+            });
+
         }));
     }
     thumbnail.append(caption);
@@ -1642,14 +1746,17 @@ function SortProjects(allProjects, submittedProjects)
             projectTree.children.push(projObject);
         }
     }
-    while(waitingForParents != null && waitingForParents.length > 0)
+    var removedChild = true;
+    while(waitingForParents != null && waitingForParents.length > 0 && removedChild)
     {
+        removedChild = false;
         for(var waitingIndex = 0; waitingIndex < waitingForParents.length; waitingIndex++)
         {
             if(waitingForParents[waitingIndex].data.prerequisiteProjectIDs[0] in treeLookup)
             {
                 treeLookup[waitingForParents[waitingIndex].data.prerequisiteProjectIDs[0]].children.push(waitingForParents[waitingIndex]);
                 waitingForParents.splice(waitingIndex,1);
+                removedChild = true;
             }
         }
     }
@@ -1823,7 +1930,11 @@ function DisplayEnrollClassEditor()
     var modelEditor = $('#ModalEditor');
 
     modelEditor.find('.modal-body').empty().text("Loading Classes...");
-    modelEditor.find('.btn-primary').off('click').hide();
+    modelEditor.find('.btn-primary').off('click').show().click(function(){
+        modelEditor.modal('hide');
+        setInterval(new function(){location.reload();}, 2000);
+        ToggleLoading(true);
+    }).text("Refresh Page to View Enrolled Courses!");
 
     APICalls.GetAllCourses().then(function(allCourses){
         var courseList = $('<ul/>');
@@ -1839,8 +1950,14 @@ function DisplayEnrollClassEditor()
 
             var urlsafe = allCourses[i].urlsafe;
             var enrollBTN = $('<button/>').text("Enroll").addClass('btn btn-info').click(urlsafe, function(key){
-                APICalls.EnrollInCourse(key.data);
-                $(this).prop('disabled', true).text('Enrolled! Waiting For Approval');
+                modelEditor.find('.btn-primary').prop('disabled', true);
+                var thisBTN = $(this);
+                thisBTN.prop('disabled', true).text('Enrolled! Waiting For Approval');
+
+                APICalls.EnrollInCourse(key.data).then(new function(){
+                    modelEditor.find('.btn-primary').prop('disabled', false);
+                    thisBTN.prop('disabled', true).text('Enrolled!').addClass('btn-success').removeClass('btn-info');
+                });
             });
             for(var index in window.AppData.UserInfo.courses)
             {
