@@ -1672,7 +1672,7 @@ function GetProjectDisplay(projectNode)
     if(window.AppData.UserInfo.character.isAdmin)
     {
         thumbnail.append($('<button/>').text("Edit").addClass('btn btn-xs btn-warning pull-right').append('<span class="glyphicon glyphicon-pencil"></span>').click(projectNode.data, function(click){
-            DisplayGenericEditor(click.data, "Edit Project", new function(updatedProject){
+            DisplayGenericEditor(click.data, "Edit Project", function(updatedProject){
                 APICalls.UpdateProject(updatedProject);
                 DisplayCoursePage(updatedProject.courseKey);
                 $("#"+updatedProject.urlsafe).children('button').trigger('click');
