@@ -96,6 +96,8 @@ def ConvertModelToDictionary(obj):
         convertedObject = obj.to_dict()
         if hasattr(obj, 'urlsafe'):
             convertedObject['urlsafe'] = obj.urlsafe
+        if hasattr(obj, 'projectXP'):
+            convertedObject['projectXP'] = obj.projectXP
     elif isinstance(obj, ndb.Key):
         convertedObject = obj.urlsafe()
     elif isinstance(obj, datetime.datetime):
@@ -912,8 +914,13 @@ class Project(BaseModel):
         else:
             validProjectFilter = lambda proj: proj.owningCharacter is None or proj.owningCharacter.get().isAdmin or proj.owningCharacter == callingCharacter.key
             cleanedList = filter(validProjectFilter, projects)
+        if len(cleanedList) > 0:
+            chart = cleanedList[0].courseKey.get().chartID.get()
+        else:
+            chart = LevelGradeChart.GetDefaultChart()
         for proj in cleanedList:
             setattr(proj, 'urlsafe', GetUrlSafeKey(proj))
+            setattr(proj, 'projectXP', chart.GetProjectXP(proj.level, proj.ChallengeLevel))
         return cleanedList
 
     @classmethod
@@ -921,8 +928,13 @@ class Project(BaseModel):
         characterKey = ndb.Key(urlsafe=characterUrlSafe)
         projects = cls.query(cls.owningCharacter == characterKey).fetch()
         projects = ForceObjectToList(projects)
+        if len(projects) > 0:
+            chart = projects[0].courseKey.get().chartID.get()
+        else:
+            chart = LevelGradeChart.GetDefaultChart()
         for proj in projects:
             setattr(proj, 'urlsafe', GetUrlSafeKey(proj))
+            setattr(proj, 'projectXP', chart.GetProjectXP(proj.level, proj.ChallengeLevel))
         return projects
 
     @classmethod

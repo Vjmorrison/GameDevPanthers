@@ -1491,7 +1491,7 @@ function GetProjectDisplay(projectNode)
         window.prompt("Copy to clipboard: Ctrl+C, Enter", click.data);
     }));
 
-    caption.append($('<p/>').text("Level: "+projectNode.data.level));
+    caption.append($('<p/>').text("Level: "+projectNode.data.level + "  XP:"+projectNode.data.projectXP));
     caption.append($('<p/>').text("Challenge: "+projectNode.data.ChallengeLevel));
 
     if(projectNode.data.videoURL && projectNode.data.videoURL != "")
