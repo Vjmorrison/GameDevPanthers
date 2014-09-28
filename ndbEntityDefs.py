@@ -94,10 +94,19 @@ def ConvertModelToDictionary(obj):
 
     if isinstance(obj, ndb.Model):
         convertedObject = obj.to_dict()
+        dictList = obj.__dict__
+        for property in dictList:
+            if "_" in property or property in convertedObject:
+                continue
+            else:
+                convertedObject[property] = getattr(obj, property)
+                '''
         if hasattr(obj, 'urlsafe'):
             convertedObject['urlsafe'] = obj.urlsafe
         if hasattr(obj, 'projectXP'):
             convertedObject['projectXP'] = obj.projectXP
+        if hasattr(obj, 'owningCharacterName'):
+            convertedObject['owningCharacterName'] = obj.owningCharacterName'''
     elif isinstance(obj, ndb.Key):
         convertedObject = obj.urlsafe()
     elif isinstance(obj, datetime.datetime):
@@ -921,6 +930,7 @@ class Project(BaseModel):
         for proj in cleanedList:
             setattr(proj, 'urlsafe', GetUrlSafeKey(proj))
             setattr(proj, 'projectXP', chart.GetProjectXP(proj.level, proj.ChallengeLevel))
+            setattr(proj, 'owningCharacterName', proj.owningCharacter.get().fullName)
         return cleanedList
 
     @classmethod
@@ -1000,7 +1010,7 @@ class Project(BaseModel):
             return GetAPIError(APIErrorTypes.NOTEXIST, {"courseID": projectID, "Calling CharacterID": callingCharacter.userID})
         updatedArgs = ForceObjectToList(updatedArgs)
 
-        if UpdateRecord(project, updatedArgs, callingCharacter, None):
+        if UpdateRecord(project, updatedArgs, callingCharacter, project.owningCharacter.urlsafe()):
             project.put()
         return project
 

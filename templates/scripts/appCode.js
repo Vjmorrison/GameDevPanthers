@@ -1068,12 +1068,12 @@ function DisplayCoursePage(CourseKey)
 
     var allProjects = $('<div/>', {
         id: 'AllCourseProjects',
-        class: 'well well-lg tree col-lg-8 col-md-8 col-xs-12',
+        class: 'well well-lg tree col-lg-7 col-md-7 col-xs-12',
         style: 'min-height: 400px; max-height: 600px; overflow-y: scroll; overflow-x: scroll; padding-top:10px;'
     });
     var SelectedProject = $('<div/>', {
         id: 'SelectedProject',
-        class: 'well well-sm col-lg-4 col-md-4 col-xs-12',
+        class: 'well well-sm col-lg-5 col-md-5 col-xs-12',
         style: 'padding-top:10px; min-height: 400px; max-height: 600px; overflow-y: scroll'
     });
 
@@ -1372,7 +1372,14 @@ function GetSortedProjectList(projectTreeNode)
                     break;
             }
         }
-        projectItem.append($('<button/>').text(projectTreeNode.data.projectName).addClass('btn btn-lg '+buttonColorClass).click(projectTreeNode, function(selectedNode) {
+        if(window.AppData.UserInfo.character.isAdmin || projectTreeNode.data.owningCharacter == window.AppData.UserInfo.character.urlsafe)
+        {
+            var projectName = projectTreeNode.data.owningCharacterName + ":" + projectTreeNode.data.projectName;
+        }
+        else{
+            var projectName = projectTreeNode.data.projectName;
+        }
+        projectItem.append($('<button/>').text(projectName).addClass('btn btn-lg '+buttonColorClass).click(projectTreeNode, function(selectedNode) {
                 if(window.AppData.SelectedProject)
                 {
                     $("#"+window.AppData.SelectedProject.urlsafe).children('button').removeClass("active");
@@ -1669,7 +1676,7 @@ function GetProjectDisplay(projectNode)
         thumbnail.append(DeleteBTN);
     }
 
-    if(window.AppData.UserInfo.character.isAdmin)
+    if(window.AppData.UserInfo.character.isAdmin || projectNode.data.owningCharacter == window.AppData.UserInfo.character.urlsafe)
     {
         thumbnail.append($('<button/>').text("Edit").addClass('btn btn-xs btn-warning pull-right').append('<span class="glyphicon glyphicon-pencil"></span>').click(projectNode.data, function(click){
             DisplayGenericEditor(click.data, "Edit Project", function(updatedProject){
