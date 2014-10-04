@@ -437,6 +437,13 @@ var APICalls = {
         })
     },
 
+    DeleteSubmission: function(DeleteUrlSafe)
+    {
+        return $.getJSON('api/SetCharacterProject/delete', {
+            characterProjectID:deleteKey
+        })
+    },
+
     GetGuestCharacter: function ()
     {
         return $.getJSON('api/GetCharacter/guest')
@@ -1115,6 +1122,30 @@ function DisplayCoursePage(CourseKey)
             fields: ['courseKey', 'owningCharacter']
         })
     });
+    window.AppData.ZoomAmount = 1;
+    var zoomInButton = $('<button/>', {
+        class:'btn btn-info btn-sm'
+    });
+
+    zoomInButton.click(function(){
+        window.AppData.ZoomAmount += 0.25;
+        window.AppData.ZoomAmount = Math.min(window.AppData.ZoomAmount, 2);
+       $('#AllCourseProjects').children('ul').css('transform', 'scale('+window.AppData.ZoomAmount+')');
+    });
+
+    zoomInButton.append('<span class="glyphicon glyphicon-zoom-in"></span>');
+
+    var zoomOutButton = $('<button/>', {
+        class:'btn btn-info btn-sm'
+    });
+
+    zoomOutButton.click(function(){
+       window.AppData.ZoomAmount -= 0.25;
+       window.AppData.ZoomAmount = Math.max(window.AppData.ZoomAmount, 0.1);
+       $('#AllCourseProjects').children('ul').css('transform', 'scale('+window.AppData.ZoomAmount+')');
+    });
+
+    zoomOutButton.append('<span class="glyphicon glyphicon-zoom-out"></span>');
 
 
     var rootProjectList = $('<ul/>', {style:'white-space:nowrap;'}).addClass('list-inline');
@@ -1134,6 +1165,8 @@ function DisplayCoursePage(CourseKey)
 
     CourseDiv.append(HeaderDiv);
     CourseDiv.append(NewProjectButton);
+    CourseDiv.append(zoomInButton);
+    CourseDiv.append(zoomOutButton);
     CourseDiv.append(projectsDiv);
     if(window.AppData.UserInfo.character.isAdmin)
     {
@@ -1266,6 +1299,12 @@ function DisplaySubmission(submission)
 
     var project = GetProjectByKey(submission.CourseID, submission.ProjectID);
 
+    if(project == null)
+    {
+        //APICalls.DeleteSubmission(submission.urlsafe);
+        return;
+    }
+
     if(submission.Status != "UnderReview")
     {
         return "";
@@ -1379,19 +1418,38 @@ function GetSortedProjectList(projectTreeNode)
         else{
             var projectName = projectTreeNode.data.projectName;
         }
-        projectItem.append($('<button/>').text(projectName).addClass('btn btn-lg '+buttonColorClass).click(projectTreeNode, function(selectedNode) {
+
+        var projectBTN = $('<button/>').text(projectName).addClass('btn btn-lg '+buttonColorClass).click(projectTreeNode, function(selectedNode) {
                 if(window.AppData.SelectedProject)
                 {
                     $("#"+window.AppData.SelectedProject.urlsafe).children('button').removeClass("active");
                 }
                 window.AppData.SelectedProject = selectedNode.data;
                 $("#"+window.AppData.SelectedProject.urlsafe).children('button').addClass("active");
+
                 $('#SelectedProject').empty().append(GetProjectDisplay(window.AppData.SelectedProject));
-            }
-        ))
+            });
+
+        projectBTN.attr('data-toggle', 'collapse').attr('data-parent', '#'+projectTreeNode.urlsafe).attr('href', '#UL_'+projectTreeNode.urlsafe);
+
+        if(projectTreeNode.children.length > 0)
+        {
+            projectBTN.append('<span class="glyphicon glyphicon-expand" style="padding-left: 5px"></span>');
+        }
+
+        projectItem.append(projectBTN)
     }
 
-    var childList = $('<ul/>').addClass('list-inline');
+    var childList = $('<ul/>').addClass('list-inline').attr('id', "UL_"+projectTreeNode.urlsafe).on('show.bs.collapse', function() {
+                $(this).parent().children('button').children('span').removeClass("glyphicon-expand").addClass('glyphicon-collapse-down')
+            }).on('hide.bs.collapse', function(){
+                $(this).parent().children('button').children('span').removeClass("glyphicon-collapse-down").addClass('glyphicon-expand')
+            });
+
+    if(projectTreeNode.urlsafe != 'root')
+    {
+        childList.addClass('collapse');
+    }
 
     if(projectTreeNode.children.length > 0)
     {
